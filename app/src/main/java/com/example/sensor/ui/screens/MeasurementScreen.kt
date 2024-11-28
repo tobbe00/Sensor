@@ -14,19 +14,24 @@ import com.example.sensor.utils.CVSExporter
 import com.example.sensor.viewmodel.MeasurementViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 @Composable
-fun MeasurementScreen(viewModel: MeasurementViewModel = viewModel(), onBackToHome: () -> Unit) {
-    var timerValue by remember { mutableStateOf(10) } // Timer som räknar ner
-    var isMeasuring by remember { mutableStateOf(false) } // Kontroll för mätning
-    var showExportButton by remember { mutableStateOf(false) } // Kontroll för export-knappen
+fun MeasurementScreen(
+    viewModel: MeasurementViewModel = viewModel(),
+    isTwoSystems: Boolean, // Pass the mode as a parameter
+    onBackToHome: () -> Unit
+) {
+    var timerValue by remember { mutableStateOf(10) } // Timer for countdown
+    var isMeasuring by remember { mutableStateOf(false) } // Control for measurement
+    var showExportButton by remember { mutableStateOf(false) } // Control for export button
     var exportedData by remember { mutableStateOf(emptyList<String>()) }
     var linearAccelerationDataToDisplay by remember { mutableStateOf(emptyList<Pair<Long, Float>>()) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // Initialize sensors and set the measurement mode
     LaunchedEffect(Unit) {
         viewModel.initialize(context)
+        viewModel.setMode(isTwoSystems) // Set the mode based on input
     }
 
     Column(
@@ -36,46 +41,46 @@ fun MeasurementScreen(viewModel: MeasurementViewModel = viewModel(), onBackToHom
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Visa aktuell vinkel
+        // Display current angle
         Text(text = "Current Angle: ${viewModel.angle.value}°")
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Visa timern när mätningen är aktiv
+        // Display the timer during measurement
         if (isMeasuring) {
             Text(text = "Timer: $timerValue seconds")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Start/Stop measurement button
         if (isMeasuring) {
             Button(onClick = {
                 isMeasuring = false
                 viewModel.stopMeasurement()
-                timerValue = 10 // Återställ timer
-                showExportButton = true // Visa export-knappen
+                timerValue = 10 // Reset the timer
+                showExportButton = true // Show export button
                 linearAccelerationDataToDisplay = viewModel.linearAccelerationData
             }) {
                 Text("Stop Measurement")
             }
         } else {
             Button(onClick = {
-
                 isMeasuring = true
                 viewModel.startMeasurement()
-                showExportButton = false // Dölj export-knappen
+                showExportButton = false // Hide export button
                 scope.launch {
-                    // Starta en coroutine för att hantera timern
+                    // Start a coroutine to handle the timer
                     for (i in 10 downTo 0) {
                         timerValue = i
-                        delay(1000L) // Vänta en sekund
-                        if (!isMeasuring) break // Avsluta om användaren trycker på Stop
+                        delay(1000L) // Wait for one second
+                        if (!isMeasuring) break // Exit if the user stops measurement
                     }
                     if (isMeasuring) {
                         isMeasuring = false
                         viewModel.stopMeasurement()
-                        timerValue = 10 // Återställ timer automatiskt när den når 0
-                        showExportButton = true // Visa export-knappen
+                        timerValue = 10 // Reset timer automatically when it reaches 0
+                        showExportButton = true // Show export button
                         linearAccelerationDataToDisplay = viewModel.linearAccelerationData
                     }
                 }
@@ -86,7 +91,7 @@ fun MeasurementScreen(viewModel: MeasurementViewModel = viewModel(), onBackToHom
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Visa export-knappen endast när mätningen är stoppad
+        // Export data button, only visible when measurement is stopped
         if (showExportButton) {
             Button(onClick = {
                 val success = viewModel.exportData(context)
@@ -99,8 +104,10 @@ fun MeasurementScreen(viewModel: MeasurementViewModel = viewModel(), onBackToHom
                 Text("Export Data")
             }
         }
+
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Display linear acceleration data
         if (linearAccelerationDataToDisplay.isNotEmpty()) {
             Text(text = "Linear Acceleration Data:")
             linearAccelerationDataToDisplay.forEach { (timestamp, angle) ->
@@ -110,23 +117,27 @@ fun MeasurementScreen(viewModel: MeasurementViewModel = viewModel(), onBackToHom
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // View exported data button
         Button(onClick = {
-            exportedData = viewModel.getExportedData(context) // Läs CSV-data
+            exportedData = viewModel.getExportedData(context) // Read CSV data
         }) {
             Text("View Exported Data")
         }
-    }
 
-    Spacer(modifier = Modifier.height(16.dp))
-
-    exportedData.forEach { line ->
-        Text(text = line) // Visa varje rad i CSV-filen
-    }
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Knapp för att navigera tillbaka till HomeScreen
+        // Display exported data
+        exportedData.forEach { line ->
+            Text(text = line) // Show each line from the CSV file
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Button to navigate back to HomeScreen
         Button(onClick = onBackToHome) {
             Text("Back to Home")
         }
     }
+}
+
 

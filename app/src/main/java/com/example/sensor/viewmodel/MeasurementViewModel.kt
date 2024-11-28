@@ -16,32 +16,38 @@ class MeasurementViewModel : ViewModel() {
     private val _angle = mutableStateOf(0f)
     val angle: State<Float> = _angle
 
-    private val rawData = mutableListOf<Float>() // (Timestamp, x, y)
-    val linearAccelerationData = mutableListOf<Pair<Long, Float>>() // (Timestamp, FilteredAngle)
+    private val rawData = mutableListOf<Float>()
+    val linearAccelerationData = mutableListOf<Pair<Long, Float>>()
+    val twoSystemsMeasurementData = mutableListOf<Pair<Long, Float>>() // New list for two-system measurements
 
-    private var previousFilteredAngle: Float = 0f // För att lagra den tidigare filtrerade vinkeln
-    private var n = 0;
+    private var previousFilteredAngle: Float = 0f
+    private var n = 0
     private var isMeasuring = false
+    private var isTwoSystemsMode = false
     private val csvExporter = CVSExporter()
     private var sensorManagerHelper: SensorManagerHelper? = null
+    private var currentGyroAngle = 0f
 
     fun initialize(context: Context) {
         sensorManagerHelper = SensorManagerHelper(context)
     }
 
+    // Set measurement mode
+    fun setMode(twoSystems: Boolean) {
+        isTwoSystemsMode = twoSystems
+    }
+
     fun startMeasurement() {
         csvExporter.clearData()
-        n = 0;
+        n = 0
         isMeasuring = true
         sensorManagerHelper?.startSensorListener { x, y, z ->
             if (isMeasuring) {
-                val calculatedAngle = Math.toDegrees(
-                    atan2(y.toDouble(), sqrt((x * x + z * z).toDouble()))
-                ).toFloat()
-                rawData.add(calculatedAngle)
-                n++
-                linearAccelerationData.add(System.currentTimeMillis() to linearAcceleration(calculatedAngle,rawData,n))
-                _angle.value = 90+(linearAccelerationData.lastOrNull()?.second ?: "N/A") as Float
+                if (isTwoSystemsMode) {
+                    handleTwoSystemsMeasurement(x, y, z)
+                } else {
+                    handleAccelerometerOnlyMeasurement(x, y, z)
+                }
             }
         }
     }
@@ -49,16 +55,16 @@ class MeasurementViewModel : ViewModel() {
     fun stopMeasurement() {
         isMeasuring = false
         _angle.value = 0f
-
+        sensorManagerHelper?.stopSensorListener()
     }
+
     fun getExportedData(context: Context): List<String> {
         return csvExporter.readCSV(context)
     }
 
-
     fun exportData(context: Context): Boolean {
         return try {
-            csvExporter.exportToCSV(context) // Exportera data via CVSExporter
+            csvExporter.exportToCSV(context)
             true
         } catch (e: Exception) {
             e.printStackTrace()
@@ -66,14 +72,49 @@ class MeasurementViewModel : ViewModel() {
         }
     }
 
-    fun linearAcceleration(currentRotation: Float, rawData: List<Float>, n: Int): Float {
-        val alpha = 0.7f // EWMA alpha-värde
-        // Kontrollera att indexet n är giltigt
-        if (n > 0 && n <= rawData.size) {
-            return alpha * currentRotation + (1 - alpha) * rawData.get(n - 1)
-        } else {
-            return alpha * currentRotation + (1 - alpha)
+    private fun handleAccelerometerOnlyMeasurement(x: Float, y: Float, z: Float) {
+        val calculatedAngle = Math.toDegrees(
+            atan2(y.toDouble(), sqrt((x * x + z * z).toDouble()))
+        ).toFloat()
+        rawData.add(calculatedAngle)
+        n++
+        val filteredAngle = linearAcceleration(calculatedAngle, rawData, n)
+        linearAccelerationData.add(System.currentTimeMillis() to filteredAngle)
+        _angle.value = 90 + filteredAngle
+    }
+
+    private fun handleTwoSystemsMeasurement(x: Float, y: Float, z: Float) {
+        // Handle Accelerometer as usual
+        handleAccelerometerOnlyMeasurement(x, y, z)
+
+        // Process Gyroscope data
+        sensorManagerHelper?.getGyroscopeData { gx, gy, gz ->
+            val gyroscopeMagnitude = sqrt(gx * gx + gy * gy + gz * gz)
+            currentGyroAngle += gyroscopeMagnitude * 0.01f // Integrate gyroscope data with a timestep of 0.01s
+
+            // Combine accelerometer and gyroscope data
+            val accelerometerAngle = linearAccelerationData.lastOrNull()?.second ?: 0f
+            val combinedAngle = twoSystemsMeasurement(accelerometerAngle, currentGyroAngle)
+
+            // Update the twoSystemsMeasurementData list
+            twoSystemsMeasurementData.add(System.currentTimeMillis() to combinedAngle)
+
+            // Update the displayed angle
+            _angle.value = combinedAngle
         }
     }
 
+    fun linearAcceleration(currentRotation: Float, rawData: List<Float>, n: Int): Float {
+        val alpha = 0.7f
+        return if (n > 0 && n <= rawData.size) {
+            alpha * currentRotation + (1 - alpha) * rawData[n - 1]
+        } else {
+            alpha * currentRotation
+        }
+    }
+
+    fun twoSystemsMeasurement(linear: Float, gyroscope: Float): Float {
+        val alpha = 0.7f
+        return alpha * linear + (1 - alpha) * gyroscope
+    }
 }

@@ -11,16 +11,36 @@ import androidx.compose.ui.unit.dp
 
 
 @Composable
-fun HomeScreen(onNavigateToMeasurementScreen: () -> Unit) {
+fun HomeScreen(
+    onNavigateToMeasurementScreen: (Boolean) -> Unit // Boolean to represent mode
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Button(onClick = onNavigateToMeasurementScreen) {
-            Text(text = "Measure with Internal Accelerometer")
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Button for single system (accelerometer only)
+            Button(
+                onClick = {
+                    onNavigateToMeasurementScreen(false) // Pass 'false' for single system mode
+                }
+            ) {
+                Text(text = "Measure with Internal Accelerometer")
+            }
+
+            // Button for two systems (accelerometer + gyroscope)
+            Button(
+                onClick = {
+                    onNavigateToMeasurementScreen(true) // Pass 'true' for two systems mode
+                }
+            ) {
+                Text(text = "Measure with 2 Systems (Accelerometer + Gyroscope)")
+            }
         }
     }
 }
-
