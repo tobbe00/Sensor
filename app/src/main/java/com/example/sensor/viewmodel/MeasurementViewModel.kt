@@ -23,7 +23,7 @@ class MeasurementViewModel : ViewModel() {
     private var previousFilteredAngle: Float = 0f
     private var n = 0
     private var isMeasuring = false
-    private var isTwoSystemsMode = false
+    var isTwoSystemsMode = false
     private val csvExporter = CVSExporter()
     private var sensorManagerHelper: SensorManagerHelper? = null
     private var currentGyroAngle = 0f
@@ -117,4 +117,5 @@ class MeasurementViewModel : ViewModel() {
         val alpha = 0.7f
         return alpha * linear + (1 - alpha) * gyroscope
     }
+
 }

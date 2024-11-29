@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
+
 import com.example.sensor.ui.screens.HomeScreen
 import com.example.sensor.ui.screens.MeasurementScreen
 import com.example.sensor.viewmodel.MeasurementViewModel
@@ -25,7 +26,8 @@ class MainActivity : ComponentActivity() {
                 "measure" -> MeasurementScreen(
                     viewModel = viewModel,
                     isTwoSystems = isTwoSystems, // Pass the mode to the screen
-                    onBackToHome = { currentScreen = "home" } // Navigate back to home
+                    onBackToHome = { currentScreen = "home" } // Navigate back to hom
+
                 )
             }
         }
