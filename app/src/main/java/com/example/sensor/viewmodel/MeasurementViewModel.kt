@@ -41,6 +41,11 @@ class MeasurementViewModel : ViewModel() {
         csvExporter.clearData()
         n = 0
         isMeasuring = true
+        linearAccelerationData.clear()
+        twoSystemsMeasurementData.clear()
+        rawData.clear()
+        currentGyroAngle = 0f
+
         sensorManagerHelper?.startSensorListener { x, y, z ->
             if (isMeasuring) {
                 if (isTwoSystemsMode) {

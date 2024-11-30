@@ -32,7 +32,7 @@ fun MeasurementScreen(
     var isMeasuring by remember { mutableStateOf(false) } // Control for measurement
     var showExportButton by remember { mutableStateOf(false) } // Control for export button
     var exportedData by remember { mutableStateOf(emptyList<String>()) }
-    var linearAccelerationDataToDisplay by remember { mutableStateOf(emptyList<Pair<Long, Float>>()) }
+    //var linearAccelerationDataToDisplay by remember { mutableStateOf(emptyList<Pair<Long, Float>>()) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -72,7 +72,7 @@ fun MeasurementScreen(
                 viewModel.stopMeasurement()
                 timerValue = 10 // Reset the timer
                 showExportButton = true // Show export button
-                linearAccelerationDataToDisplay = viewModel.linearAccelerationData
+                //linearAccelerationDataToDisplay = viewModel.linearAccelerationData
             }) {
                 Text("Stop Measurement")
             }
@@ -93,7 +93,7 @@ fun MeasurementScreen(
                         viewModel.stopMeasurement()
                         timerValue = 10 // Reset timer automatically when it reaches 0
                         showExportButton = true // Show export button
-                        linearAccelerationDataToDisplay = viewModel.linearAccelerationData
+                        //linearAccelerationDataToDisplay = viewModel.linearAccelerationData
                     }
                 }
             }) {
@@ -120,7 +120,7 @@ fun MeasurementScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-
+        /*
         // Display linear acceleration data
         if (linearAccelerationDataToDisplay.isNotEmpty()) {
             Text(text = "Linear Acceleration Data:")
@@ -128,6 +128,8 @@ fun MeasurementScreen(
                 Text(text = "Timestamp: $timestamp, Angle: $angle°")
             }
         }
+
+         */
 
         Spacer(modifier = Modifier.height(16.dp))
 
