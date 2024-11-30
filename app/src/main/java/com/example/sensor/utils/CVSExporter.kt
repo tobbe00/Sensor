@@ -1,6 +1,7 @@
 package com.example.sensor.utils
 
 import android.content.Context
+import android.util.Log
 import java.io.File
 
 class CVSExporter {
@@ -12,14 +13,31 @@ class CVSExporter {
     }
 
     fun exportToCSV(context: Context) {
-        val file = File(context.getExternalFilesDir(null), "measurement.csv")
-        file.bufferedWriter().use { writer ->
-            writer.appendLine("Timestamp,Angle")
-            recordedData.forEach { (timestamp, angle) ->
-                writer.appendLine("$timestamp,$angle")
+        // Hitta standard "Download"-katalogen för appen
+        val downloadsDir = context.getExternalFilesDir("Download")
+
+        // Kontrollera och skapa katalogen om den inte finns
+        if (downloadsDir != null && !downloadsDir.exists()) {
+            downloadsDir.mkdirs()
+        }
+
+        // Skapa filen
+        val file = File(downloadsDir, "measurement.csv")
+        try {
+            file.bufferedWriter().use { writer ->
+                writer.appendLine("Timestamp,Angle")
+                recordedData.forEach { (timestamp, angle) ->
+                    writer.appendLine("$timestamp,$angle")
+                }
             }
+            println("File saved at: ${file.absolutePath}") // För loggar
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw RuntimeException("Failed to export data: ${e.message}")
         }
     }
+
+
     fun clearData() {
         recordedData.clear()
     }
