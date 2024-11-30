@@ -79,7 +79,9 @@ class MeasurementViewModel : ViewModel() {
         rawData.add(calculatedAngle)
         n++
         val filteredAngle = linearAcceleration(calculatedAngle, rawData, n)
+        val timestamp = System.currentTimeMillis()
         linearAccelerationData.add(System.currentTimeMillis() to filteredAngle)
+        csvExporter.recordData(timestamp, filteredAngle)
         _angle.value = 90 + filteredAngle
     }
 
@@ -95,10 +97,11 @@ class MeasurementViewModel : ViewModel() {
             // Combine accelerometer and gyroscope data
             val accelerometerAngle = linearAccelerationData.lastOrNull()?.second ?: 0f
             val combinedAngle = twoSystemsMeasurement(accelerometerAngle, currentGyroAngle)
+            val timestamp = System.currentTimeMillis()
 
             // Update the twoSystemsMeasurementData list
             twoSystemsMeasurementData.add(System.currentTimeMillis() to combinedAngle)
-
+            csvExporter.recordData(timestamp, combinedAngle)
             // Update the displayed angle
             _angle.value = combinedAngle
         }
