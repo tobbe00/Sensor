@@ -61,7 +61,7 @@ fun MeasurementScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        MeasurementGraph(data = viewModel.linearAccelerationData)
+        MeasurementGraph(data = viewModel.linearAccelerationData.map { it.timestamp to it.angle })
 
         Spacer(modifier = Modifier.height(16.dp))
 
