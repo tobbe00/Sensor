@@ -13,6 +13,11 @@ class CVSExporter {
     }
 
     fun exportToCSV(context: Context) {
+        // Kontrollera om det finns data
+        if (recordedData.isEmpty()) {
+            throw RuntimeException("No data to export")
+        }
+
         // Hitta standard "Download"-katalogen för appen
         val downloadsDir = context.getExternalFilesDir("Download")
 
@@ -25,9 +30,14 @@ class CVSExporter {
         val file = File(downloadsDir, "measurement.csv")
         try {
             file.bufferedWriter().use { writer ->
-                writer.appendLine("Timestamp,Angle")
+                writer.appendLine("Seconds,Angle")
+
+                // Hämta första timestamp för att skapa intervallet
+                val startTimestamp = recordedData.first().first
+
                 recordedData.forEach { (timestamp, angle) ->
-                    writer.appendLine("$timestamp,$angle")
+                    val seconds = (timestamp - startTimestamp) / 1000.0 // Konvertera till sekunder
+                    writer.appendLine("$seconds,$angle")
                 }
             }
             println("File saved at: ${file.absolutePath}") // För loggar
