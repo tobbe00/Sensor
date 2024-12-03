@@ -1,6 +1,7 @@
 package com.example.sensor.viewmodel
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -40,6 +41,8 @@ class MeasurementViewModel : ViewModel() {
     }
 
     fun startMeasurement() {
+        if (sensorManagerHelper == null) return
+
         csvExporter.clearData()
         isMeasuring = true
         rawData.clear()
@@ -47,14 +50,18 @@ class MeasurementViewModel : ViewModel() {
         twoSystemsMeasurementData.clear()
         currentGyroAngle = 0f
 
-        sensorManagerHelper?.startSensorListener { x, y, z ->
-            if (isMeasuring) {
-                val sensorData = SensorData(x, y, z)
-                if (isTwoSystemsMode) {
-                    handleTwoSystemsMeasurement(sensorData)
-                } else {
-                    handleAccelerometerMeasurement(sensorData)
-                }
+        if (isTwoSystemsMode) {
+            Log.d("MeasurementViewModel", "Starting measurement with two systems mode")
+            sensorManagerHelper?.startAccelerometerListener { x, y, z ->
+                if (isMeasuring) handleAccelerometerMeasurement(SensorData(x, y, z))
+            }
+            sensorManagerHelper?.startGyroscopeListener { gx, gy, gz ->
+                if (isMeasuring) handleGyroscopeMeasurement(gx, gy, gz)
+            }
+        } else {
+            Log.d("MeasurementViewModel", "Starting measurement with accelerometer only")
+            sensorManagerHelper?.startAccelerometerListener { x, y, z ->
+                if (isMeasuring) handleAccelerometerMeasurement(SensorData(x, y, z))
             }
         }
     }
@@ -62,40 +69,40 @@ class MeasurementViewModel : ViewModel() {
     fun stopMeasurement() {
         isMeasuring = false
         _angle.value = 0f
-        sensorManagerHelper?.stopSensorListener()
+        sensorManagerHelper?.stopAllListeners()
+        Log.d("MeasurementViewModel", "Stopped all sensors")
     }
 
     private fun handleAccelerometerMeasurement(sensorData: SensorData) {
         val rawAngle = calculateAngle(sensorData)
-        val filteredAngle = applyLinearAcceleration(90+rawAngle)
+        val filteredAngle = applyLinearAcceleration(90 + rawAngle)
         val timestamp = System.currentTimeMillis()
 
         rawData.add(FilteredAngle(rawAngle, filteredAngle))
         linearAccelerationData.add(MeasurementData(timestamp, filteredAngle))
         csvExporter.recordData(timestamp, filteredAngle)
 
-        _angle.value =filteredAngle
+        _angle.value = filteredAngle
     }
 
-    private fun handleTwoSystemsMeasurement(sensorData: SensorData) {
-        handleAccelerometerMeasurement(sensorData)
-        sensorManagerHelper?.getGyroscopeData { gx, gy, gz ->
-            val gyroscopeData = GyroscopeData(
-                gx = gx,
-                gy = gy,
-                gz = gz,
-                magnitude = sqrt(gx * gx + gy * gy + gz * gz)
-            )
+    private fun handleGyroscopeMeasurement(gx: Float, gy: Float, gz: Float) {
+        Log.d("MeasurementViewModel", "Received gyroscope data gx=$gx, gy=$gy, gz=$gz")
+        val gyroscopeData = GyroscopeData(
+            gx = gx,
+            gy = gy,
+            gz = gz,
+            magnitude = sqrt(gx * gx + gy * gy + gz * gz)
+        )
 
-            currentGyroAngle += gyroscopeData.magnitude * 0.01f
-            val combinedAngle = applyTwoSystemsFusion(currentGyroAngle)
-            val timestamp = System.currentTimeMillis()
+        currentGyroAngle += gyroscopeData.magnitude * 0.01f
+        val combinedAngle = applyTwoSystemsFusion(currentGyroAngle)
+        val timestamp = System.currentTimeMillis()
 
-            twoSystemsMeasurementData.add(MeasurementData(timestamp, combinedAngle))
-            csvExporter.recordData(timestamp, combinedAngle)
+        twoSystemsMeasurementData.add(MeasurementData(timestamp, combinedAngle))
+        csvExporter.recordData(timestamp, combinedAngle)
 
-            _angle.value = combinedAngle
-        }
+        _angle.value = combinedAngle
+        Log.d("MeasurementViewModel", "Added to twoSystemsMeasurementData: Timestamp=$timestamp, Angle=$combinedAngle")
     }
 
     private fun calculateAngle(sensorData: SensorData): Float {

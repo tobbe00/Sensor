@@ -18,12 +18,17 @@ class CVSExporter {
             throw RuntimeException("No data to export")
         }
 
-        // Hitta standard "Download"-katalogen för appen
-        val downloadsDir = context.getExternalFilesDir("Download")
+        val downloadsDir = context.getExternalFilesDir("Download") ?: run {
+            Log.e("Export", "Failed to access external files directory")
+            return
+        }
 
-        // Kontrollera och skapa katalogen om den inte finns
-        if (downloadsDir != null && !downloadsDir.exists()) {
-            downloadsDir.mkdirs()
+        if (!downloadsDir.exists()) {
+            val created = downloadsDir.mkdirs()
+            if (!created) {
+                Log.e("Export", "Failed to create directory: ${downloadsDir.absolutePath}")
+                return
+            }
         }
 
         // Skapa filen
@@ -40,10 +45,9 @@ class CVSExporter {
                     writer.appendLine("$seconds,$angle")
                 }
             }
-            println("File saved at: ${file.absolutePath}") // För loggar
+            Log.d("Export", "File saved successfully at: ${file.absolutePath}")
         } catch (e: Exception) {
-            e.printStackTrace()
-            throw RuntimeException("Failed to export data: ${e.message}")
+            Log.e("Export", "Failed to save file: ${e.message}")
         }
     }
 

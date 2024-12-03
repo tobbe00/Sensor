@@ -1,5 +1,6 @@
 package com.example.sensor.ui.screens
 
+import android.util.Log
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Color
 import android.widget.Toast
@@ -57,12 +58,18 @@ fun MeasurementScreen(
         // Display the timer during measurement
         if (isMeasuring) {
             Text(text = "Timer: $timerValue seconds")
+
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        MeasurementGraph(data = viewModel.linearAccelerationData.map { it.timestamp to it.angle })
-
+        if(viewModel.isTwoSystemsMode) {
+            MeasurementGraph(data = viewModel.twoSystemsMeasurementData.map { it.timestamp to it.angle }, color = Color.Blue)
+            MeasurementGraph(data = viewModel.linearAccelerationData.map { it.timestamp to it.angle }, color = Color.Red)
+        }
+        else{
+            MeasurementGraph(data = viewModel.linearAccelerationData.map { it.timestamp to it.angle }, color = Color.Red)
+        }
         Spacer(modifier = Modifier.height(16.dp))
 
         // Start/Stop measurement button
@@ -118,21 +125,6 @@ fun MeasurementScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        /*
-        // Display linear acceleration data
-        if (linearAccelerationDataToDisplay.isNotEmpty()) {
-            Text(text = "Linear Acceleration Data:")
-            linearAccelerationDataToDisplay.forEach { (timestamp, angle) ->
-                Text(text = "Timestamp: $timestamp, Angle: $angle°")
-            }
-        }
-
-         */
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         // View exported data button
         Button(onClick = {
             exportedData = viewModel.getExportedData(context) // Read CSV data
@@ -159,7 +151,7 @@ fun MeasurementScreen(
 }
 
 @Composable
-fun MeasurementGraph(data: List<Pair<Long, Float>>) {
+fun MeasurementGraph(data: List<Pair<Long, Float>>, color: Color) {
     Canvas(modifier = Modifier
         .fillMaxWidth()
         .height(200.dp)
@@ -189,8 +181,8 @@ fun MeasurementGraph(data: List<Pair<Long, Float>>) {
         // Rita Path med rätt färg och stroke
         drawPath(
             path = path,
-            color = androidx.compose.ui.graphics.Color.Blue,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f)
+            color = color,
+            style = Stroke(width = 3f)
         )
     }
 }
