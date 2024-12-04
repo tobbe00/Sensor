@@ -18,8 +18,12 @@ import kotlin.random.Random
 import kotlin.time.times
 class MeasurementViewModel : ViewModel() {
 
-    private val _angle = mutableStateOf(0f)
-    val angle: State<Float> = _angle
+    private val _linearAccelerationAngle = mutableStateOf(0f)
+    val linearAccelerationAngle: State<Float> = _linearAccelerationAngle
+
+    private val _gyroAngle = mutableStateOf(0f)
+    val gyroAngle: State<Float> = _gyroAngle
+
 
     private val rawData = mutableListOf<FilteredAngle>()
     private val csvExporter = CVSExporter()
@@ -68,7 +72,6 @@ class MeasurementViewModel : ViewModel() {
 
     fun stopMeasurement() {
         isMeasuring = false
-        _angle.value = 0f
         sensorManagerHelper?.stopAllListeners()
         Log.d("MeasurementViewModel", "Stopped all sensors")
     }
@@ -78,11 +81,11 @@ class MeasurementViewModel : ViewModel() {
         val filteredAngle = applyLinearAcceleration(90 + rawAngle)
         val timestamp = System.currentTimeMillis()
 
+        _linearAccelerationAngle.value = filteredAngle
         rawData.add(FilteredAngle(rawAngle, filteredAngle))
         linearAccelerationData.add(MeasurementData(timestamp, filteredAngle))
-        csvExporter.recordData(timestamp, filteredAngle)
+        csvExporter.recordLinearData(timestamp, filteredAngle)
 
-        _angle.value = filteredAngle
     }
 
     private fun handleGyroscopeMeasurement(gx: Float, gy: Float, gz: Float) {
@@ -97,11 +100,10 @@ class MeasurementViewModel : ViewModel() {
         currentGyroAngle += gyroscopeData.magnitude * 0.01f
         val combinedAngle = applyTwoSystemsFusion(currentGyroAngle)
         val timestamp = System.currentTimeMillis()
-
+        _gyroAngle.value = combinedAngle
         twoSystemsMeasurementData.add(MeasurementData(timestamp, combinedAngle))
-        csvExporter.recordData(timestamp, combinedAngle)
+        csvExporter.recordGyroData(timestamp, combinedAngle)
 
-        _angle.value = combinedAngle
         Log.d("MeasurementViewModel", "Added to twoSystemsMeasurementData: Timestamp=$timestamp, Angle=$combinedAngle")
     }
 
@@ -112,13 +114,13 @@ class MeasurementViewModel : ViewModel() {
     }
 
     private fun applyLinearAcceleration(rawAngle: Float): Float {
-        val alpha = 0.7f
+        val alpha = 0.5f
         val previousAngle = rawData.lastOrNull()?.filteredAngle ?: 0f
         return alpha * rawAngle + (1 - alpha) * previousAngle
     }
 
     private fun applyTwoSystemsFusion(gyroAngle: Float): Float {
-        val alpha = 0.7f
+        val alpha = 0.5f
         val accelerometerAngle = linearAccelerationData.lastOrNull()?.angle ?: 0f
         return alpha * accelerometerAngle + (1 - alpha) * gyroAngle
     }
@@ -131,9 +133,5 @@ class MeasurementViewModel : ViewModel() {
             e.printStackTrace()
             false
         }
-    }
-
-    fun getExportedData(context: Context): List<String> {
-        return csvExporter.readCSV(context)
     }
 }

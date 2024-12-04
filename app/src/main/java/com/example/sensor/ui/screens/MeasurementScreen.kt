@@ -50,10 +50,16 @@ fun MeasurementScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Display current angle
-        Text(text = "Current Angle: ${viewModel.angle.value}°")
-
-        Spacer(modifier = Modifier.height(16.dp))
+        // Visa aktuella vinklar
+        if (isTwoSystems) {
+            // Visa både Linear och Gyro när tvåsystemsläget är aktivt
+            Text(text = "Linear Angle: ${viewModel.linearAccelerationAngle.value}°")
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Gyro Angle: ${viewModel.gyroAngle.value}°")
+        } else {
+            // Visa endast den aktuella vinkeln för Linear
+            Text(text = "Linear Angle: ${viewModel.linearAccelerationAngle.value}°")
+        }
 
         // Display the timer during measurement
         if (isMeasuring) {
@@ -64,9 +70,12 @@ fun MeasurementScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         if(viewModel.isTwoSystemsMode) {
-            MeasurementGraph(data = viewModel.twoSystemsMeasurementData.map { it.timestamp to it.angle }, color = Color.Blue)
-            MeasurementGraph(data = viewModel.linearAccelerationData.map { it.timestamp to it.angle }, color = Color.Red)
-        }
+            MeasurementComparisonGraph(
+                dataSets = listOf(
+                    viewModel.twoSystemsMeasurementData.map { it.timestamp to it.angle } to Color.Blue,
+                    viewModel.linearAccelerationData.map { it.timestamp to it.angle } to Color.Red
+                )
+            )}
         else{
             MeasurementGraph(data = viewModel.linearAccelerationData.map { it.timestamp to it.angle }, color = Color.Red)
         }
@@ -125,14 +134,6 @@ fun MeasurementScreen(
             }
         }
 
-        // View exported data button
-        Button(onClick = {
-            exportedData = viewModel.getExportedData(context) // Read CSV data
-        }) {
-            Text("View Exported Data")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         // Display exported data
         exportedData.forEach { line ->
@@ -186,5 +187,49 @@ fun MeasurementGraph(data: List<Pair<Long, Float>>, color: Color) {
         )
     }
 }
+
+@Composable
+fun MeasurementComparisonGraph(
+    dataSets: List<Pair<List<Pair<Long, Float>>, Color>>
+) {
+    Canvas(modifier = Modifier
+        .fillMaxWidth()
+        .height(200.dp)
+        .padding(16.dp)) {
+
+        if (dataSets.isEmpty()) return@Canvas
+
+        val allData = dataSets.flatMap { it.first }
+        if (allData.isEmpty()) return@Canvas
+
+        val minValue = allData.minOf { it.second }
+        val maxValue = allData.maxOf { it.second }
+        val timeSpan = allData.maxOf { it.first } - allData.minOf { it.first }
+        val widthPerTime = size.width / timeSpan
+        val heightPerValue = size.height / (maxValue - minValue)
+
+        dataSets.forEach { (data, color) ->
+            val path = Path()
+
+            data.forEachIndexed { index, (time, value) ->
+                val x = (time - allData.minOf { it.first }) * widthPerTime
+                val y = size.height - (value - minValue) * heightPerValue
+
+                if (index == 0) {
+                    path.moveTo(x, y)
+                } else {
+                    path.lineTo(x, y)
+                }
+            }
+
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(width = 3f)
+            )
+        }
+    }
+}
+
 
 
